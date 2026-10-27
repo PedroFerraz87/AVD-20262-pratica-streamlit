@@ -1,6 +1,7 @@
 import altair as alt
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from src.data_loader import load_data
@@ -36,6 +37,15 @@ COLUNAS_OBRIGATORIAS = {
     *VARS_QUANT,
 }
 
+
+def atualizar_selecao_kpi():
+    estado_graficos = st.session_state.get("kpi_crossfilter", {})
+    selecao = getattr(estado_graficos, "selection", None)
+    if selecao is None and isinstance(estado_graficos, dict):
+        selecao = estado_graficos.get("selection", {})
+    st.session_state["kpi_selecao"] = selecao or {}
+
+
 st.title("Análise de partidas do futebol brasileiro")
 st.caption(
     "Explore os resultados, as estatísticas das partidas e as relações entre "
@@ -63,6 +73,32 @@ df.loc[df["home_goal"] < df["away_goal"], "resultado_partida"] = (
 
 with st.sidebar:
     st.header("Filtros")
+
+    variavel_intervalo = st.selectbox(
+        "Variável para limitar por intervalo",
+        options=VARS_QUANT,
+        key="variavel_intervalo",
+    )
+    valores_intervalo = df[variavel_intervalo].dropna()
+    minimo = float(valores_intervalo.min())
+    maximo = float(valores_intervalo.max())
+    valores_inteiros = valores_intervalo.mod(1).eq(0).all()
+    if valores_inteiros:
+        minimo, maximo, passo = int(minimo), int(maximo), 1
+    else:
+        passo = max(round((maximo - minimo) / 100, 2), 0.01)
+    intervalo_numerico = st.slider(
+        f"Intervalo de {variavel_intervalo}",
+        min_value=minimo,
+        max_value=maximo,
+        value=(minimo, maximo),
+        step=passo,
+        help=(
+            "Partidas sem valor para essa variável não entram no resultado "
+            "enquanto o intervalo estiver aplicado."
+        ),
+        key=f"intervalo_numerico_{variavel_intervalo}",
+    )
 
     torneios = sorted(df["tournament"].dropna().unique().tolist())
     torneios_selecionados = st.multiselect(
@@ -98,6 +134,9 @@ with st.sidebar:
         intervalo_datas = None
 
 df_filtrado = df[df["tournament"].isin(torneios_selecionados)]
+df_filtrado = df_filtrado[
+    df_filtrado[variavel_intervalo].between(*intervalo_numerico)
+]
 if equipe_selecionada != "Todas as equipes":
     df_filtrado = df_filtrado[
         (df_filtrado["home"] == equipe_selecionada)
@@ -139,19 +178,37 @@ with aba_analise:
             st.info("Não há partidas para os filtros selecionados.")
         else:
             matriz = df_filtrado[variaveis].corr(method="spearman")
-            fig_correlacao = px.imshow(
-                matriz,
-                text_auto=".2f",
-                aspect="auto",
-                color_continuous_scale="RdBu_r",
-                zmin=-1,
-                zmax=1,
-                labels={"color": "Correlação"},
+            valores = matriz.to_numpy()
+            textos = [
+                [
+                    f"{valor:.2f}"
+                    if linha > coluna and pd.notna(valor)
+                    else ""
+                    for coluna, valor in enumerate(valores_linha)
+                ]
+                for linha, valores_linha in enumerate(valores)
+            ]
+            fig_correlacao = go.Figure(
+                data=go.Heatmap(
+                    z=valores,
+                    x=matriz.columns,
+                    y=matriz.index,
+                    text=textos,
+                    texttemplate="%{text}",
+                    colorscale="RdBu",
+                    zmin=-1,
+                    zmax=1,
+                    colorbar={"title": "Correlação"},
+                    hovertemplate=(
+                        "%{y} × %{x}<br>Correlação: %{z:.2f}<extra></extra>"
+                    ),
+                )
             )
             fig_correlacao.update_layout(
                 height=580,
                 margin=dict(l=10, r=10, t=30, b=10),
             )
+            fig_correlacao.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_correlacao, width="stretch")
             st.caption(
                 "Correlação de Spearman; pares com valores ausentes são "
@@ -160,108 +217,227 @@ with aba_analise:
 
     with col_distribuicao:
         st.subheader("Distribuição das variáveis")
-        variavel_distribuicao = st.selectbox(
-            "Variável quantitativa",
+        variaveis_distribuicao = st.multiselect(
+            "Variáveis quantitativas",
             options=VARS_QUANT,
-            key="variavel_distribuicao",
+            default=["home_goal", "away_goal"],
+            key="variaveis_distribuicao",
         )
         separar_resultado = st.checkbox(
             "Separar por resultado da partida",
             value=False,
         )
-        if df_filtrado.empty:
+        if not variaveis_distribuicao:
+            st.info("Selecione pelo menos uma variável para exibir os histogramas.")
+        elif df_filtrado.empty:
             st.info("Não há partidas para os filtros selecionados.")
         else:
-            fig_distribuicao = px.histogram(
-                df_filtrado,
-                x=variavel_distribuicao,
-                color="resultado_partida" if separar_resultado else None,
-                nbins=30,
-                barmode="overlay" if separar_resultado else "relative",
-                opacity=0.75 if separar_resultado else 1,
-                labels={
-                    variavel_distribuicao: variavel_distribuicao,
-                    "count": "Partidas",
-                    "resultado_partida": "Resultado",
-                },
-            )
-            fig_distribuicao.update_layout(
-                height=480,
-                yaxis_title="Partidas",
-                margin=dict(l=10, r=10, t=30, b=10),
-            )
-            st.plotly_chart(fig_distribuicao, width="stretch")
+            for inicio in range(0, len(variaveis_distribuicao), 2):
+                colunas_graficos = st.columns(2)
+                for coluna, variavel in zip(
+                    colunas_graficos,
+                    variaveis_distribuicao[inicio : inicio + 2],
+                ):
+                    with coluna:
+                        fig_distribuicao = px.histogram(
+                            df_filtrado,
+                            x=variavel,
+                            color="resultado_partida" if separar_resultado else None,
+                            nbins=30,
+                            barmode="overlay" if separar_resultado else "relative",
+                            opacity=0.75 if separar_resultado else 1,
+                            labels={
+                                variavel: variavel,
+                                "count": "Partidas",
+                                "resultado_partida": "Resultado",
+                            },
+                            title=variavel,
+                        )
+                        fig_distribuicao.update_layout(
+                            height=340,
+                            showlegend=separar_resultado,
+                            yaxis_title="Partidas",
+                            margin=dict(l=10, r=10, t=45, b=10),
+                        )
+                        st.plotly_chart(fig_distribuicao, width="stretch")
 
 with aba_kpis:
     st.subheader("Indicadores das partidas filtradas")
     if df_filtrado.empty:
         st.info("Não há partidas para calcular indicadores com os filtros atuais.")
     else:
-        total_partidas = len(df_filtrado)
-        vitorias_mandante = (
-            df_filtrado["resultado_partida"] == "Vitória mandante"
-        ).mean()
-        empates = (df_filtrado["resultado_partida"] == "Empate").mean()
-        vitorias_visitante = (
-            df_filtrado["resultado_partida"] == "Vitória visitante"
-        ).mean()
-        media_gols = (
-            df_filtrado["home_goal"] + df_filtrado["away_goal"]
-        ).mean()
+        selecao = st.session_state.get("kpi_selecao", {})
+        resultados_selecionados = [
+            item["resultado_partida"]
+            for item in selecao.get("resultado", [])
+            if "resultado_partida" in item
+        ]
+        torneios_selecionados_no_grafico = [
+            item["tournament"]
+            for item in selecao.get("torneio", [])
+            if "tournament" in item
+        ]
 
-        metrica_partidas, metrica_gols, metrica_mandante, metrica_empate, metrica_visitante = (
-            st.columns(5)
-        )
-        metrica_partidas.metric("Partidas", f"{total_partidas:,}")
-        metrica_gols.metric("Média de gols", f"{media_gols:.2f}")
-        metrica_mandante.metric("Vitórias mandantes", f"{vitorias_mandante:.1%}")
-        metrica_empate.metric("Empates", f"{empates:.1%}")
-        metrica_visitante.metric(
-            "Vitórias visitantes",
-            f"{vitorias_visitante:.1%}",
-        )
+        df_kpis = df_filtrado
+        if resultados_selecionados:
+            df_kpis = df_kpis[
+                df_kpis["resultado_partida"].isin(resultados_selecionados)
+            ]
+        if torneios_selecionados_no_grafico:
+            df_kpis = df_kpis[
+                df_kpis["tournament"].isin(torneios_selecionados_no_grafico)
+            ]
 
-        col_resultados, col_torneios = st.columns(2)
-        with col_resultados:
-            st.subheader("Distribuição dos resultados")
-            contagem_resultados = (
-                df_filtrado["resultado_partida"]
-                .value_counts()
-                .rename_axis("Resultado")
-                .reset_index(name="Partidas")
+        if df_kpis.empty:
+            st.info(
+                "A combinação das seleções dos gráficos não contém partidas. "
+                "Limpe uma das seleções para ver os indicadores."
             )
-            fig_resultados = px.pie(
-                contagem_resultados,
-                names="Resultado",
-                values="Partidas",
-                hole=0.4,
+        else:
+            st.caption(
+                "Clique nas barras para filtrar os indicadores e o outro gráfico. "
+                "Use Shift+clique para selecionar mais de uma categoria; "
+                "clique duas vezes para limpar a seleção."
             )
-            st.plotly_chart(fig_resultados, width="stretch")
-
-        with col_torneios:
-            st.subheader("Média de gols por torneio")
-            gols_por_torneio = (
-                df_filtrado.assign(
-                    gols_partida=df_filtrado["home_goal"] + df_filtrado["away_goal"]
+            total_partidas = len(df_kpis)
+            partidas_com_resultado = df_kpis[
+                df_kpis["resultado_partida"].isin(
+                    [
+                        "Vitória mandante",
+                        "Empate",
+                        "Vitória visitante",
+                    ]
                 )
-                .groupby("tournament", as_index=False)
-                .agg(
-                    media_gols=("gols_partida", "mean"),
-                    partidas=("gols_partida", "size"),
+            ]
+            total_com_resultado = len(partidas_com_resultado)
+            if total_com_resultado:
+                vitorias_mandante = (
+                    partidas_com_resultado["resultado_partida"]
+                    == "Vitória mandante"
+                ).mean()
+                empates = (
+                    partidas_com_resultado["resultado_partida"] == "Empate"
+                ).mean()
+                vitorias_visitante = (
+                    partidas_com_resultado["resultado_partida"]
+                    == "Vitória visitante"
+                ).mean()
+                taxa_mandante = f"{vitorias_mandante:.1%}"
+                taxa_empate = f"{empates:.1%}"
+                taxa_visitante = f"{vitorias_visitante:.1%}"
+            else:
+                taxa_mandante = taxa_empate = taxa_visitante = "—"
+            media_gols = (
+                df_kpis["home_goal"] + df_kpis["away_goal"]
+            ).mean()
+
+            (
+                metrica_partidas,
+                metrica_gols,
+                metrica_mandante,
+                metrica_empate,
+                metrica_visitante,
+            ) = st.columns(5)
+            metrica_partidas.metric("Partidas", f"{total_partidas:,}")
+            metrica_gols.metric("Média de gols", f"{media_gols:.2f}")
+            metrica_mandante.metric(
+                "Vitórias mandantes",
+                taxa_mandante,
+            )
+            metrica_empate.metric("Empates", taxa_empate)
+            metrica_visitante.metric(
+                "Vitórias visitantes",
+                taxa_visitante,
+            )
+
+            dados_graficos = df_filtrado.assign(
+                gols_partida=df_filtrado["home_goal"] + df_filtrado["away_goal"]
+            )
+            selecao_resultado = alt.selection_point(
+                name="resultado",
+                fields=["resultado_partida"],
+            )
+            selecao_torneio = alt.selection_point(
+                name="torneio",
+                fields=["tournament"],
+            )
+            grafico_resultados = (
+                alt.Chart(dados_graficos)
+                .transform_filter(selecao_torneio)
+                .mark_bar()
+                .encode(
+                    x=alt.X(
+                        "resultado_partida:N",
+                        title="Resultado",
+                        sort=[
+                            "Vitória mandante",
+                            "Empate",
+                            "Vitória visitante",
+                            "Indeterminado",
+                        ],
+                    ),
+                    y=alt.Y("count():Q", title="Partidas"),
+                    color=alt.Color(
+                        "resultado_partida:N",
+                        title="Resultado",
+                        scale=alt.Scale(scheme="tableau10"),
+                    ),
+                    opacity=alt.condition(
+                        selecao_resultado,
+                        alt.value(1),
+                        alt.value(0.35),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("resultado_partida:N", title="Resultado"),
+                        alt.Tooltip("count():Q", title="Partidas"),
+                    ],
                 )
-                .sort_values("partidas", ascending=False)
-                .head(10)
-                .sort_values("media_gols")
+                .add_params(selecao_resultado)
+                .properties(
+                    title="Partidas por resultado",
+                    width=300,
+                    height=320,
+                )
             )
-            fig_torneios = px.bar(
-                gols_por_torneio,
-                x="media_gols",
-                y="tournament",
-                orientation="h",
-                text_auto=".2f",
-                labels={
-                    "media_gols": "Média de gols por partida",
-                    "tournament": "Torneio",
-                },
+            grafico_torneios = (
+                alt.Chart(dados_graficos)
+                .transform_filter(selecao_resultado)
+                .mark_bar()
+                .encode(
+                    y=alt.Y(
+                        "tournament:N",
+                        title="Torneio",
+                        sort="-x",
+                    ),
+                    x=alt.X(
+                        "mean(gols_partida):Q",
+                        title="Média de gols por partida",
+                    ),
+                    color=alt.condition(
+                        selecao_torneio,
+                        alt.value("#c1121f"),
+                        alt.value("#c9cdd4"),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("tournament:N", title="Torneio"),
+                        alt.Tooltip(
+                            "mean(gols_partida):Q",
+                            title="Média de gols",
+                            format=".2f",
+                        ),
+                        alt.Tooltip("count():Q", title="Partidas"),
+                    ],
+                )
+                .add_params(selecao_torneio)
+                .properties(
+                    title="Média de gols por torneio",
+                    width=420,
+                    height=320,
+                )
             )
-            st.plotly_chart(fig_torneios, width="stretch")
+            st.altair_chart(
+                grafico_resultados | grafico_torneios,
+                key="kpi_crossfilter",
+                on_select=atualizar_selecao_kpi,
+                width="stretch",
+            )
