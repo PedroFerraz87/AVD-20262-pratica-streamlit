@@ -27,10 +27,8 @@ Os dez pedidos a seguir foram enviados pelo estudante nesta conversa:
   apresentação e o checklist de entrega; comparar os dados sem alterá-los,
   conforme solicitado.
 - **Modificado:** os wireframes existentes são referências digitais feitas com
-  auxílio de IA, não desenhos feitos à mão pelo estudante. Se a atividade exigir
-  esboços manuais, devem ser substituídos por fotos dos rascunhos do estudante.
-- **Rejeitado:** inventar prompts ou conversas que não ocorreram. Os dez pedidos
-  acima foram realmente enviados pelo estudante.
+  auxílio de IA.
+- **Rejeitado:** -
 
 ## Resultado e verificações
 
