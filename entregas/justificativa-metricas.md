@@ -7,6 +7,10 @@ feitas nos gráficos de resultado e de torneio também filtram os indicadores e 
 outro gráfico. As porcentagens de resultado usam como denominador somente
 partidas com placar disponível e resultado classificável.
 
+O dashboard apresenta três visuais complementares: quantidade de partidas por
+resultado, média de gols por torneio e evolução anual da média de gols. A
+seleção de resultado ou torneio também atualiza a série temporal.
+
 ## Métrica 1: Partidas analisadas
 
 - **Variável:** uma linha por partida no dataset; o número exibido é a

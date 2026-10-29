@@ -66,8 +66,9 @@ partidas sem resultado classificável não entram nesse denominador.
 - Qual a proporção de vitórias mandantes, empates e vitórias visitantes entre
   partidas classificáveis no recorte?
 - Como os resultados se distribuem e qual é a média de gols por torneio?
+- Como a média de gols por partida varia ao longo dos anos?
 - Como uma seleção de resultado ou torneio nos gráficos afeta os KPIs e o outro
-  gráfico?
+  gráfico, incluindo a série temporal?
 
 ### Descrição complementar dos rascunhos
 
@@ -78,8 +79,10 @@ partidas sem resultado classificável não entram nesse denominador.
 - **Dashboard 2:** título de indicadores filtrados; cinco cartões de KPI
   (partidas, média de gols, vitórias mandantes, empates e vitórias visitantes);
   abaixo, gráfico de partidas por resultado e gráfico de média de gols por
-  torneio lado a lado. As seleções dos gráficos são cruzadas. Os filtros da
-  barra lateral também atualizam os indicadores e gráficos.
+  torneio lado a lado; em seguida, gráfico de linha com a evolução anual da
+  média de gols. As seleções dos gráficos de resultado e torneio também
+  filtram a série temporal. Os filtros da barra lateral atualizam os
+  indicadores e os três gráficos.
 
 ## Restrições
 

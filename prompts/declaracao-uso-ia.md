@@ -43,9 +43,11 @@ Os dez pedidos a seguir foram enviados pelo estudante nesta conversa:
   as variáveis têm unidades e amplitudes diferentes, a comparação deve focar
   distribuições e não alturas brutas entre gráficos; títulos e unidades devem
   permanecer claros.
-- Os KPIs de resultado usam o total de partidas filtradas como denominador.
-  Assim, ao filtrar por um resultado, a proporção daquele resultado passa a
-  100%, o que deve ser interpretado dentro do subconjunto selecionado.
+- Os KPIs de resultado usam como denominador as partidas filtradas com placar
+  classificável; partidas sem resultado classificável são excluídas das três
+  porcentagens de resultado.
+- O Dashboard 2 foi complementado com um terceiro visual: a evolução anual da
+  média de gols por partida, filtrada pelas seleções de resultado e torneio.
 - A estrutura das seleções cruzadas do Dashboard 2 e os casos de filtros
   vazios foram inspecionados. A interação por clique ainda deve ser confirmada
   manualmente no navegador.

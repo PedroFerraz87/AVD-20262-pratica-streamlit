@@ -295,8 +295,8 @@ with aba_kpis:
             )
         else:
             st.caption(
-                "Clique nas barras para filtrar os indicadores e o outro gráfico. "
-                "Use Shift+clique para selecionar mais de uma categoria; "
+                "Clique nas barras para filtrar os indicadores e os outros "
+                "gráficos. Use Shift+clique para selecionar mais de uma categoria; "
                 "clique duas vezes para limpar a seleção."
             )
             total_partidas = len(df_kpis)
@@ -351,7 +351,8 @@ with aba_kpis:
             )
 
             dados_graficos = df_filtrado.assign(
-                gols_partida=df_filtrado["home_goal"] + df_filtrado["away_goal"]
+                gols_partida=df_filtrado["home_goal"] + df_filtrado["away_goal"],
+                ano=df_filtrado["date"].dt.year,
             )
             selecao_resultado = alt.selection_point(
                 name="resultado",
@@ -435,8 +436,35 @@ with aba_kpis:
                     height=320,
                 )
             )
+            grafico_tendencia_gols = (
+                alt.Chart(dados_graficos)
+                .transform_filter(selecao_resultado)
+                .transform_filter(selecao_torneio)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("ano:O", title="Ano", sort="ascending"),
+                    y=alt.Y(
+                        "mean(gols_partida):Q",
+                        title="Média de gols por partida",
+                    ),
+                    tooltip=[
+                        alt.Tooltip("ano:O", title="Ano"),
+                        alt.Tooltip(
+                            "mean(gols_partida):Q",
+                            title="Média de gols",
+                            format=".2f",
+                        ),
+                        alt.Tooltip("count():Q", title="Partidas"),
+                    ],
+                )
+                .properties(
+                    title="Evolução da média de gols por ano",
+                    width=760,
+                    height=260,
+                )
+            )
             st.altair_chart(
-                grafico_resultados | grafico_torneios,
+                (grafico_resultados | grafico_torneios) & grafico_tendencia_gols,
                 key="kpi_crossfilter",
                 on_select=atualizar_selecao_kpi,
                 width="stretch",
