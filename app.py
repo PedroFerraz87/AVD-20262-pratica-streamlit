@@ -7,6 +7,7 @@ import streamlit as st
 from src.data_loader import load_data
 
 
+# [IA] GitHub Copilot – apoio à estrutura do aplicativo e à preparação dos dados.
 st.set_page_config(
     page_title="Futebol Brasileiro | Análise de partidas",
     page_icon="⚽",
@@ -52,6 +53,7 @@ st.caption(
     "as variáveis quantitativas."
 )
 
+# [IA] GitHub Copilot – apoio à leitura, validação e filtragem dos dados.
 df = load_data()
 colunas_faltantes = COLUNAS_OBRIGATORIAS.difference(df.columns)
 if colunas_faltantes:
@@ -162,6 +164,7 @@ st.caption(
 aba_analise, aba_kpis = st.tabs(["Dashboard 1 · Análise", "Dashboard 2 · KPIs"])
 
 with aba_analise:
+    # [IA] GitHub Copilot – apoio à sintaxe dos visuais Plotly e controles do Dashboard 1.
     col_correlacao, col_distribuicao = st.columns([1, 1.2])
 
     with col_correlacao:
@@ -262,6 +265,7 @@ with aba_analise:
                         st.plotly_chart(fig_distribuicao, width="stretch")
 
 with aba_kpis:
+    # [IA] GitHub Copilot – apoio aos cálculos, visuais Altair e seleções cruzadas.
     st.subheader("Indicadores das partidas filtradas")
     if df_filtrado.empty:
         st.info("Não há partidas para calcular indicadores com os filtros atuais.")
