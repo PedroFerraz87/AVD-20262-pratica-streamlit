@@ -70,11 +70,9 @@ streamlit run app.py
 - **Tamanho:** o GitHub rejeita arquivos acima de **100 MB**. Se o CSV tratado for grande, reduza colunas e linhas na EDA ou exporte em Parquet (`df.to_parquet(...)`, exige `pyarrow`).
 - **Lembre de commitar o arquivo:** confira com `git status` que `data/clean/dataset.csv` aparece como novo arquivo.
 
-## Passo a passo
+## Deploy
 
-O passo a passo detalhado de cada aula (Aulas 21, 22 e 23), com pré-requisitos e objetivos, está em [ROTEIRO.md](ROTEIRO.md). Comece por ele depois do Setup.
-
-**Link do app (Aula 23):** [Futebol Brasileiro | Análise de partidas](https://avd-20262-pratica-app-tygumxi32atkencuhyeiy5.streamlit.app/)
+**Link do app:** [Futebol Brasileiro | Análise de partidas](https://avd-20262-pratica-app-tygumxi32atkencuhyeiy5.streamlit.app/)
 
 ## IA neste projeto
 
